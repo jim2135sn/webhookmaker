@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Webhook Customizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif; /* all of the css is ai generated 💀🥀 */
+            background-color: #36393f;
+            color: #dcddde;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background-color: #2f3136;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            flex-grow: 1;
+        }
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #b9bbbe;
+        }
+        .input-field, .textarea-field {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 4px;
+            border: 1px solid #202225;
+            background-color: #40444b;
+            color: #dcddde;
+            transition: border-color 0.2s;
+        }
+        .input-field:focus, .textarea-field:focus {
+            outline: none;
+            border-color: #7289da;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border: none;
+        }
+        .btn-primary {
+            background-color: #7289da;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #677bc4;
+        }
+        .btn-secondary {
+            background-color: #4f545c;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #5c616a;
+        }
+        .btn-danger {
+            background-color: #f04747;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #d84141;
+        }
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #ffffff;
+            border-bottom: 1px solid #40444b;
+            padding-bottom: 0.5rem;
+        }
+        .embed-section, .action-row-section, .field-section {
+            border: 1px solid #40444b;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 6px;
+            background-color: #3a3d42;
+        }
+        .status-message {
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .status-success {
+            background-color: #43b581;
+            color: white;
+        }
+        .status-error {
+            background-color: #f04747;
+            color: white;
+        }
+        .hidden {
+            display: none;
+        }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        .checkbox-label input[type="checkbox"] {
+            margin-right: 0.5rem;
+            accent-color: #7289da;
+        }
+        footer {
+            text-align: center;
+            padding: 1rem;
+            color: #b9bbbe;
+            background-color: #2f3136;
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold text-center mb-8 text-white">Discord Webhook Customizer</h1>
+
+        <div class="input-group">
+            <label for="webhookUrl">Webhook URL:</label>
+            <input type="url" id="webhookUrl" class="input-field" placeholder="Enter your Discord Webhook URL">
+        </div>
+
+        <h2 class="section-title mt-6">Basic Message</h2>
+        <div class="input-group">
+            <label for="username">Username (Optional):</label>
+            <input type="text" id="username" class="input-field" placeholder="Webhook Bot Name">
+        </div>
+        <div class="input-group">
+            <label for="avatarUrl">Avatar URL (Optional):</label>
+            <input type="url" id="avatarUrl" class="input-field" placeholder="URL of avatar image">
+        </div>
+        <div class="input-group">
+            <label for="content">Message Content:</label>
+            <textarea id="content" class="textarea-field" rows="4" placeholder="Enter your message here..."></textarea>
+        </div>
+        <div class="input-group">
+            <label class="checkbox-label">
+                <input type="checkbox" id="tts">
+                Text-to-Speech (TTS)
+            </label>
+        </div>
+
+        <h2 class="section-title mt-6">Embeds</h2>
+        <div id="embedsContainer">
+        </div>
+        <button id="addEmbedBtn" class="btn btn-secondary btn-sm mt-2">Add Embed</button>
+
+        <div class="mt-8 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+            <button id="sendBtn" class="btn btn-primary flex-1">Send Message</button>
+            <button id="previewJsonBtn" class="btn btn-secondary flex-1">Preview JSON</button>
+            <button id="copyJsonBtn" class="btn btn-secondary flex-1">Copy JSON</button>
+            <button id="clearAllBtn" class="btn btn-danger flex-1">Clear All</button>
+        </div>
+
+        <div id="statusMessage" class="status-message hidden"></div>
+        <div id="jsonPreviewArea" class="mt-6 hidden">
+            <h3 class="text-xl font-semibold mb-2 text-white">JSON Preview:</h3>
+            <pre class="bg-gray-800 p-4 rounded-md text-sm overflow-x-auto"></pre>
+        </div>
+    </div>
+    <footer>
+        By Joah
+    </footer>
+
+    <script>
+        let embedCount = 0;
+
+        const embedsContainer = document.getElementById('embedsContainer');
+        const addEmbedBtn = document.getElementById('addEmbedBtn');
+
+        const webhookUrlInput = document.getElementById('webhookUrl');
+        const usernameInput = document.getElementById('username');
+        const avatarUrlInput = document.getElementById('avatarUrl');
+        const contentInput = document.getElementById('content');
+        const ttsCheckbox = document.getElementById('tts');
+
+        const sendBtn = document.getElementById('sendBtn');
+        const previewJsonBtn = document.getElementById('previewJsonBtn');
+        const copyJsonBtn = document.getElementById('copyJsonBtn');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        const statusMessageDiv = document.getElementById('statusMessage');
+        const jsonPreviewArea = document.getElementById('jsonPreviewArea');
+        const jsonPreviewPre = jsonPreviewArea.querySelector('pre');
+
+        function createEmbedHTML(id) {
+            return `
+                <div class="embed-section" id="embed-${id}" data-embed-id="${id}">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-lg font-semibold text-white">Embed ${id + 1}</h3>
+                        <button class="btn btn-danger btn-sm remove-embed-btn" data-embed-id="${id}">Remove Embed</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="input-group">
+                            <label for="embed-title-${id}">Title:</label>
+                            <input type="text" id="embed-title-${id}" class="input-field embed-title" placeholder="Embed Title">
+                        </div>
+                        <div class="input-group">
+                            <label for="embed-url-${id}">Title URL:</label>
+                            <input type="url" id="embed-url-${id}" class="input-field embed-url" placeholder="https://example.com">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="embed-description-${id}">Description:</label>
+                        <textarea id="embed-description-${id}" class="textarea-field embed-description" rows="3" placeholder="Embed Description"></textarea>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="input-group">
+                            <label for="embed-color-${id}">Color (Hex e.g., #FF0000):</label>
+                            <input type="text" id="embed-color-${id}" class="input-field embed-color" placeholder="#7289DA">
+                        </div>
+                           <div class="input-group">
+                            <label for="embed-timestamp-${id}" class="checkbox-label">
+                                <input type="checkbox" id="embed-timestamp-${id}" class="embed-timestamp">
+                                Add Current Timestamp
+                            </label>
+                        </div>
+                    </div>
+                    <h4 class="text-md font-semibold mt-3 mb-1 text-gray-300">Author:</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input type="text" id="embed-author-name-${id}" class="input-field embed-author-name" placeholder="Author Name">
+                        <input type="url" id="embed-author-url-${id}" class="input-field embed-author-url" placeholder="Author URL">
+                        <input type="url" id="embed-author-icon-${id}" class="input-field embed-author-icon" placeholder="Author Icon URL">
+                    </div>
+                    <h4 class="text-md font-semibold mt-3 mb-1 text-gray-300">Footer:</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="text" id="embed-footer-text-${id}" class="input-field embed-footer-text" placeholder="Footer Text">
+                        <input type="url" id="embed-footer-icon-${id}" class="input-field embed-footer-icon" placeholder="Footer Icon URL">
+                    </div>
+                    <h4 class="text-md font-semibold mt-3 mb-1 text-gray-300">Images:</h4>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="url" id="embed-thumbnail-${id}" class="input-field embed-thumbnail" placeholder="Thumbnail URL">
+                        <input type="url" id="embed-image-${id}" class="input-field embed-image" placeholder="Image URL">
+                    </div>
+                    <h4 class="text-md font-semibold mt-3 mb-1 text-gray-300">Fields:</h4>
+                    <div id="embed-fields-container-${id}" class="space-y-2"></div>
+                    <button class="btn btn-secondary btn-sm mt-2 add-field-btn" data-embed-id="${id}">Add Field</button>
+                </div>
+            `;
+        }
+
+        function createFieldHTML(embedId, fieldId) {
+            return `
+                <div class="field-section p-2" id="embed-${embedId}-field-${fieldId}" data-field-id="${fieldId}">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm text-gray-400">Field ${fieldId + 1}</span>
+                        <button class="btn btn-danger btn-sm remove-field-btn" data-embed-id="${embedId}" data-field-id="${fieldId}">X</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <input type="text" id="embed-${embedId}-field-name-${fieldId}" class="input-field input-field-sm field-name" placeholder="Field Name">
+                        <input type="text" id="embed-${embedId}-field-value-${fieldId}" class="input-field input-field-sm field-value" placeholder="Field Value">
+                        <label class="checkbox-label text-sm">
+                            <input type="checkbox" id="embed-${embedId}-field-inline-${fieldId}" class="field-inline"> Inline
+                        </label>
+                    </div>
+                </div>
+            `;
+        }
+
+        addEmbedBtn.addEventListener('click', () => {
+            if (embedsContainer.children.length >= 10) {
+                showStatus("Maximum of 10 embeds allowed.", true);
+                return;
+            }
+            const newEmbed = document.createElement('div');
+            newEmbed.innerHTML = createEmbedHTML(embedCount);
+            embedsContainer.appendChild(newEmbed.firstElementChild);
+            embedCount++;
+        });
+
+        embedsContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-embed-btn')) {
+                const embedId = e.target.dataset.embedId;
+                document.getElementById(`embed-${embedId}`).remove();
+            }
+            if (e.target.classList.contains('add-field-btn')) {
+                const embedId = e.target.dataset.embedId;
+                const fieldsContainer = document.getElementById(`embed-fields-container-${embedId}`);
+                if (fieldsContainer.children.length >= 25) {
+                   showStatus("Maximum of 25 fields per embed allowed.", true);
+                   return;
+                }
+                const fieldId = fieldsContainer.children.length;
+                const newField = document.createElement('div');
+                newField.innerHTML = createFieldHTML(embedId, fieldId);
+                fieldsContainer.appendChild(newField.firstElementChild);
+            }
+            if (e.target.classList.contains('remove-field-btn')) {
+                const embedId = e.target.dataset.embedId;
+                const fieldId = e.target.dataset.fieldId;
+                document.getElementById(`embed-${embedId}-field-${fieldId}`).remove();
+            }
+        });
+
+        function buildPayload() {
+            const payload = {};
+            if (contentInput.value.trim()) payload.content = contentInput.value.trim();
+            if (usernameInput.value.trim()) payload.username = usernameInput.value.trim();
+            if (avatarUrlInput.value.trim()) payload.avatar_url = avatarUrlInput.value.trim();
+            if (ttsCheckbox.checked) payload.tts = true;
+
+            payload.embeds = [];
+            document.querySelectorAll('.embed-section').forEach(embedDiv => {
+                const embedId = embedDiv.dataset.embedId;
+                const embed = {};
+                const title = document.getElementById(`embed-title-${embedId}`).value.trim();
+                if (title) embed.title = title;
+
+                const url = document.getElementById(`embed-url-${embedId}`).value.trim();
+                if (url) embed.url = url;
+
+                const description = document.getElementById(`embed-description-${embedId}`).value.trim();
+                if (description) embed.description = description;
+
+                const colorHex = document.getElementById(`embed-color-${embedId}`).value.trim();
+                if (colorHex && /^#[0-9A-F]{6}$/i.test(colorHex)) {
+                    embed.color = parseInt(colorHex.replace("#", ""), 16);
+                }
+
+                if (document.getElementById(`embed-timestamp-${embedId}`).checked) {
+                    embed.timestamp = new Date().toISOString();
+                }
+
+                const authorName = document.getElementById(`embed-author-name-${embedId}`).value.trim();
+                if (authorName) {
+                    embed.author = { name: authorName };
+                    const authorUrl = document.getElementById(`embed-author-url-${embedId}`).value.trim();
+                    if (authorUrl) embed.author.url = authorUrl;
+                    const authorIcon = document.getElementById(`embed-author-icon-${embedId}`).value.trim();
+                    if (authorIcon) embed.author.icon_url = authorIcon;
+                }
+
+                const footerText = document.getElementById(`embed-footer-text-${embedId}`).value.trim();
+                if (footerText) {
+                    embed.footer = { text: footerText };
+                    const footerIcon = document.getElementById(`embed-footer-icon-${embedId}`).value.trim();
+                    if (footerIcon) embed.footer.icon_url = footerIcon;
+                }
+
+                const thumbnailUrl = document.getElementById(`embed-thumbnail-${embedId}`).value.trim();
+                if (thumbnailUrl) embed.thumbnail = { url: thumbnailUrl };
+
+                const imageUrl = document.getElementById(`embed-image-${embedId}`).value.trim();
+                if (imageUrl) embed.image = { url: imageUrl };
+
+                embed.fields = [];
+                embedDiv.querySelectorAll('.field-section').forEach(fieldDiv => {
+                    const field = {};
+                    const fieldName = fieldDiv.querySelector('.field-name').value.trim();
+                    const fieldValue = fieldDiv.querySelector('.field-value').value.trim();
+                    if (fieldName && fieldValue) {
+                        field.name = fieldName;
+                        field.value = fieldValue;
+                        field.inline = fieldDiv.querySelector('.field-inline').checked;
+                        embed.fields.push(field);
+                    }
+                });
+                if (Object.keys(embed).length > 0 || embed.fields.length > 0) {
+                    payload.embeds.push(embed);
+                }
+            });
+            if (payload.embeds.length === 0) delete payload.embeds;
+
+
+            if (!payload.content && (!payload.embeds || payload.embeds.length === 0)) {
+                showStatus("Cannot send an empty message. Add content or an embed.", true);
+                return null;
+            }
+            return payload;
+        }
+
+        function showStatus(message, isError = false) {
+            statusMessageDiv.textContent = message;
+            statusMessageDiv.className = 'status-message';
+            statusMessageDiv.classList.add(isError ? 'status-error' : 'status-success');
+            statusMessageDiv.classList.remove('hidden');
+            setTimeout(() => {
+                statusMessageDiv.classList.add('hidden');
+            }, 5000);
+        }
+
+        previewJsonBtn.addEventListener('click', () => {
+            const payload = buildPayload();
+            if (payload) {
+                jsonPreviewPre.textContent = JSON.stringify(payload, null, 2);
+                jsonPreviewArea.classList.remove('hidden');
+            } else {
+                jsonPreviewArea.classList.add('hidden');
+            }
+        });
+
+        copyJsonBtn.addEventListener('click', () => {
+            const payload = buildPayload();
+            if (payload) {
+                const jsonString = JSON.stringify(payload, null, 2);
+                const textarea = document.createElement('textarea');
+                textarea.value = jsonString;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    showStatus('JSON copied to clipboard!');
+                } catch (err) {
+                    showStatus('Failed to copy JSON.', true);
+                    console.error('Error copying JSON: ', err);
+                }
+                document.body.removeChild(textarea);
+                jsonPreviewPre.textContent = jsonString;
+                jsonPreviewArea.classList.remove('hidden');
+            } else {
+                jsonPreviewArea.classList.add('hidden');
+            }
+        });
+
+        sendBtn.addEventListener('click', async () => {
+            const webhookUrl = webhookUrlInput.value.trim();
+            if (!webhookUrl) {
+                showStatus('Webhook URL is required!', true);
+                return;
+            }
+
+            const payload = buildPayload();
+            if (!payload) return;
+
+            jsonPreviewPre.textContent = JSON.stringify(payload, null, 2);
+            jsonPreviewArea.classList.remove('hidden');
+
+            try {
+                showStatus('Sending...', false);
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                if (response.ok) {
+                    showStatus('Message sent successfully!', false);
+                } else {
+                    const errorData = await response.json().catch(() => ({ message: "Unknown error, could not parse response."}));
+                    console.error('Discord API Error:', errorData);
+                    let errorMessage = `Error: ${response.status} ${response.statusText}. `;
+                    if (errorData && errorData.message) {
+                        errorMessage += `Details: ${errorData.message}`;
+                        if(errorData.errors) {
+                            try {
+                                errorMessage += ` Specifics: ${JSON.stringify(errorData.errors)}`;
+                            } catch (e) { }
+                        }
+                    }
+                    showStatus(errorMessage, true);
+                }
+            } catch (error) {
+                console.error('Fetch Error:', error);
+                showStatus(`Network error: ${error.message}`, true);
+            }
+        });
+
+        clearAllBtn.addEventListener('click', () => {
+            const confirmModal = document.createElement('div');
+            confirmModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            confirmModal.innerHTML = `
+                <div class="bg-[#2f3136] p-6 rounded-lg shadow-xl max-w-sm w-full text-white">
+                    <p class="mb-4 text-lg">Are you sure you want to clear all fields? This action cannot be undone.</p>
+                    <div class="flex justify-end space-x-3">
+                        <button id="cancelClear" class="btn btn-secondary">Cancel</button>
+                        <button id="confirmClear" class="btn btn-danger">Clear All</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(confirmModal);
+
+            document.getElementById('confirmClear').addEventListener('click', () => {
+                webhookUrlInput.value = '';
+                usernameInput.value = '';
+                avatarUrlInput.value = '';
+                contentInput.value = '';
+                ttsCheckbox.checked = false;
+                embedsContainer.innerHTML = '';
+                embedCount = 0;
+                jsonPreviewArea.classList.add('hidden');
+                jsonPreviewPre.textContent = '';
+                statusMessageDiv.classList.add('hidden');
+                showStatus('All fields cleared.', false);
+                confirmModal.remove();
+            });
+
+            document.getElementById('cancelClear').addEventListener('click', () => {
+                confirmModal.remove();
+            });
+        });
+    </script>
+</body>
+</html>
